@@ -206,33 +206,29 @@ jobs:
               COMMITS="$(git log --no-merges --pretty=format:'%s' $RANGE -- "$ZIP" | head -n 120 || true)"
               [ -n "$COMMITS" ] || COMMITS="(No commits found for this zip.)"
 
-              SYS_INSTR=$(cat <<'SYSEOF'
-You are writing release notes for a game mod.
+              SYS_INSTR="
+              You are writing release notes for a game mod.
 
-Return Markdown in EXACT structure:
+              Return Markdown in EXACT structure:
 
-### Added
-- ...
+              ### Added
+              - ...
 
-### Changed
-- ...
+              ### Changed
+              - ...
 
-### Removed
-- ...
+              ### Removed
+              - ...
 
-### Fixed
-- ...
+              ### Fixed
+              - ...
 
----
-
-Rules:
-- Only output that Markdown. No intro or outro text.
-- Only use information present in the commit list; DO NOT invent features.
-- If you cannot infer anything for a section, put "- N/A".
-- Do NOT add extra headings like "Changelog" or template text.
-- Ignore CI/build/refactor noise unless it affects players.
-SYSEOF
-)
+              Rules:
+              - Only output that Markdown. No intro or outro text.
+              - Only use information present in the commit list; DO NOT invent features.
+              - If you cannot infer anything for a section, put \"- N/A\".
+              - Do NOT add extra headings like \"Changelog\" or template text.
+              - Ignore CI/build/refactor noise unless it affects players."
 
               USER_TEXT="$(printf "Mod: %s\nVersion: %s\nDate: %s\nZip: %s\n\nCommits (newest first):\n%s\n" \
                 "$SAFE_ID" "$VER" "$TODAY" "$ZIP" "$(printf "%s\n" "$COMMITS" | sed 's/^/- /')")"
@@ -387,4 +383,3 @@ SYSEOF
           appId: ${{ matrix.mod.appId }}
           publishedFileId: ${{ matrix.mod.publishedFileId }}
           changeNote: ${{ env.CHANGE_NOTE }}
-
