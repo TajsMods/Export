@@ -374,6 +374,25 @@ jobs:
             echo "$DELIM"
           } >> "$GITHUB_ENV"
 
+      - name: Stage Workshop payload (zip only)
+        env:
+          STEAM_USERNAME: ${{ secrets.STEAM_USERNAME }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          rm -rf workshop_upload
+          mkdir -p workshop_upload
+
+          ZIP="${{ matrix.mod.zip_path }}"
+          ASSET_NAME="${{ matrix.mod.asset_name }}"
+
+          test -f "$ZIP" || (echo "Missing ZIP: $ZIP" && exit 1)
+          cp "$ZIP" "workshop_upload/$ASSET_NAME"
+
+          echo "Staged:"
+          ls -la workshop_upload
+
       - name: Upload to Steam Workshop (steamcmd)
         uses: m00nl1ght-dev/steam-workshop-deploy@v4
         with:
