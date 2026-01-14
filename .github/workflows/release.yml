@@ -2,9 +2,8 @@ name: Release (multi-mod) + Workshop + Changelogs
 
 on:
   push:
-    branches: ["master"]
+    branches: ["main"]
     paths:
-      - "export/*.zip"
       - "*.zip"
   workflow_dispatch:
     inputs:
@@ -367,11 +366,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          printf "%s" "${{ matrix.mod.steam_note_b64 }}" | base64 -d > steam_note.txt
+          NOTE="$(printf "%s" "${{ matrix.mod.steam_note_b64 }}" | base64 -d | tr -d '\r')"
+          DELIM="EOF_$(date +%s%N)"
           {
-            echo "CHANGE_NOTE<<EOF"
-            cat steam_note.txt
-            echo "EOF"
+            echo "CHANGE_NOTE<<$DELIM"
+            printf '%s\n' "$NOTE"
+            echo "$DELIM"
           } >> "$GITHUB_ENV"
 
       - name: Upload to Steam Workshop (steamcmd)
