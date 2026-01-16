@@ -190,17 +190,19 @@ jobs:
               echo "Changelog for $SAFE_ID [$VER] missing/blank -> creating template for manual editing..."
 
               # Create simple template
-              NOTES="### Added
-                - ...
+              NOTES="
+                ### Added
+                - N/A or TBD
 
                 ### Changed
-                - ... 
+                - N/A or TBD 
 
                 ### Removed
-                - ...
+                - N/A or TBD
 
                 ### Fixed
-                - ..."
+                - N/A or TBD
+                "
 
               # Prepend new entry
               {
