@@ -152,7 +152,7 @@ jobs:
             ASSET_NAME="${SAFE_ID}-v${VER}.zip"
 
             # Steam mapping
-            PUBLISHED_FILE_ID="$(jq -r --arg id "$SAFE_ID" '.[$id]. publishedFileId // empty' workshop_map.json)"
+            PUBLISHED_FILE_ID="$(jq -r --arg id "$SAFE_ID" '.[$id].publishedFileId // empty' workshop_map.json)"
             APP_ID="$(jq -r --arg id "$SAFE_ID" '.[$id].appId // "3606890"' workshop_map.json)"
 
             test -n "$PUBLISHED_FILE_ID" || (echo "workshop_map.json missing publishedFileId for key:  $SAFE_ID" && exit 1)
