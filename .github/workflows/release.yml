@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
     inputs:
       zips:
-        description: "Optional: release only these zips (comma-separated paths). Example: export/TajemnikTV-Core.zip,export/TajemnikTV-QoL.zip"
+        description: "Optional: release only these zips (comma-separated paths). Example: export/TajemnikTV-Core. zip,export/TajemnikTV-QoL.zip"
         required: false
         default: ""
 
@@ -35,7 +35,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          if [ -n "${{ github.event.inputs.zips }}" ]; then
+          if [ -n "${{ github.event. inputs.zips }}" ]; then
             # Manual selection
             RAW="${{ github.event.inputs.zips }}"
             ZIPS="$(printf "%s" "$RAW" | tr ',' '\n' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//' | sed '/^$/d')"
@@ -50,8 +50,8 @@ jobs:
               CHANGED="$(git diff --name-only "$BEFORE" "$SHA" || true)"
             fi
 
-            # Prefer export/*.zip if present, fallback to root zips
-            ZIPS="$(printf "%s\n" "$CHANGED" | grep -E '^export/[^/]+\.zip$' || true)"
+            # Prefer export/*. zip if present, fallback to root zips
+            ZIPS="$(printf "%s\n" "$CHANGED" | grep -E '^export/[^/]+\. zip$' || true)"
             if [ -z "$ZIPS" ]; then
               ZIPS="$(printf "%s\n" "$CHANGED" | grep -E '^[^/]+\.zip$' || true)"
             fi
@@ -110,9 +110,6 @@ jobs:
 
       - name: Prepare per-mod metadata + changelog + notes
         id: prep
-        env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GEMINI_MODEL: ${{ secrets.GEMINI_MODEL }}
         shell: bash
         run: |
           set -euo pipefail
@@ -122,9 +119,6 @@ jobs:
             echo 'mods_json=[]' >> "$GITHUB_OUTPUT"
             exit 0
           fi
-
-          : "${GEMINI_API_KEY:?Missing GEMINI_API_KEY secret}"
-          : "${GEMINI_MODEL:?Missing GEMINI_MODEL secret}"
 
           mkdir -p changelogs
           TODAY="$(date +%F)"
@@ -136,7 +130,7 @@ jobs:
             [ -n "$ZIP" ] || continue
             test -f "$ZIP" || (echo "Missing ZIP: $ZIP" && exit 1)
 
-            # Find manifest.json inside the zip
+            # Find manifest. json inside the zip
             MANIFEST_PATH="$(unzip -Z1 "$ZIP" | grep -Ei '(^|/)(manifest\.json)$' | head -n 1 || true)"
             test -n "$MANIFEST_PATH" || (echo "No manifest.json found inside $ZIP" && exit 1)
 
@@ -147,7 +141,7 @@ jobs:
             NAME="$(printf "%s" "$MANIFEST_JSON" | jq -r '.name // empty')"
             VER="$(printf "%s" "$MANIFEST_JSON" | jq -r '.version_number // empty')"
 
-            test -n "$NAME" || (echo "manifest.json missing .name in $ZIP" && exit 1)
+            test -n "$NAME" || (echo "manifest.json missing . name in $ZIP" && exit 1)
             test -n "$VER"  || (echo "manifest.json missing .version_number in $ZIP" && exit 1)
 
             if [ -n "$NAMESPACE" ]; then MOD_ID="${NAMESPACE}-${NAME}"; else MOD_ID="${NAME}"; fi
@@ -158,14 +152,14 @@ jobs:
             ASSET_NAME="${SAFE_ID}-v${VER}.zip"
 
             # Steam mapping
-            PUBLISHED_FILE_ID="$(jq -r --arg id "$SAFE_ID" '.[$id].publishedFileId // empty' workshop_map.json)"
+            PUBLISHED_FILE_ID="$(jq -r --arg id "$SAFE_ID" '.[$id]. publishedFileId // empty' workshop_map.json)"
             APP_ID="$(jq -r --arg id "$SAFE_ID" '.[$id].appId // "3606890"' workshop_map.json)"
 
-            test -n "$PUBLISHED_FILE_ID" || (echo "workshop_map.json missing publishedFileId for key: $SAFE_ID" && exit 1)
+            test -n "$PUBLISHED_FILE_ID" || (echo "workshop_map.json missing publishedFileId for key:  $SAFE_ID" && exit 1)
 
             # Changelog file per mod
-            CHANGELOG="changelogs/${SAFE_ID}.md"
-            if [ ! -f "$CHANGELOG" ]; then
+            CHANGELOG="changelogs/${SAFE_ID}. md"
+            if [ !  -f "$CHANGELOG" ]; then
               {
                 echo "# Changelog — ${SAFE_ID}"
                 echo
@@ -176,7 +170,7 @@ jobs:
             EXISTING="$(awk -v ver="$VER" '
               BEGIN {found=0}
               $0 ~ "^##[[:space:]]*\\[" ver "\\][[:space:]]*-" {found=1; next}
-              found && $0 ~ "^##[[:space:]]*\\[[0-9]" {exit}
+              found && $0 ~ "^##[[: space:]]*\\[[0-9]" {exit}
               found {print}
             ' "$CHANGELOG" || true)"
 
@@ -185,7 +179,7 @@ jobs:
               | grep -E '^- ' -m 1 || true)"
 
             NEEDS_GEN="false"
-            if ! grep -qE "^##[[:space:]]*\\[$VER\\][[:space:]]*-" "$CHANGELOG"; then
+            if !  grep -qE "^##[[:space:]]*\\[$VER\\][[:space:]]*-" "$CHANGELOG"; then
               NEEDS_GEN="true"
             elif [ -z "$NONEMPTY" ]; then
               NEEDS_GEN="true"
@@ -193,74 +187,20 @@ jobs:
 
             NOTES=""
             if [ "$NEEDS_GEN" = "true" ]; then
-              echo "Changelog for $SAFE_ID [$VER] missing/blank -> generating via Gemini..."
+              echo "Changelog for $SAFE_ID [$VER] missing/blank -> creating template for manual editing..."
 
-              # Find last tag for this mod (pattern SAFE_ID-v*)
-              LAST_TAG="$(git tag -l "${SAFE_ID}-v*" --sort=-version:refname | head -n 1 || true)"
+              # Create simple template
+              NOTES="### Added
+                - ...
 
-              if [ -n "$LAST_TAG" ]; then
-                RANGE="${LAST_TAG}..HEAD"
-              else
-                RANGE="HEAD"
-              fi
+                ### Changed
+                - ... 
 
-              # Only commits that touched THIS zip path
-              COMMITS="$(git log --no-merges --pretty=format:'%s' $RANGE -- "$ZIP" | head -n 120 || true)"
-              [ -n "$COMMITS" ] || COMMITS="(No commits found for this zip.)"
+                ### Removed
+                - ...
 
-              SYS_INSTR="
-              You are writing release notes for a game mod.
-
-              Return Markdown in EXACT structure:
-
-              ### Added
-              - ...
-
-              ### Changed
-              - ...
-
-              ### Removed
-              - ...
-
-              ### Fixed
-              - ...
-
-              Rules:
-              - Only output that Markdown. No intro or outro text.
-              - Only use information present in the commit list; DO NOT invent features.
-              - If you cannot infer anything for a section, put \"- N/A\".
-              - Do NOT add extra headings like \"Changelog\" or template text.
-              - Ignore CI/build/refactor noise unless it affects players."
-
-              USER_TEXT="$(printf "Mod: %s\nVersion: %s\nDate: %s\nZip: %s\n\nCommits (newest first):\n%s\n" \
-                "$SAFE_ID" "$VER" "$TODAY" "$ZIP" "$(printf "%s\n" "$COMMITS" | sed 's/^/- /')")"
-
-              PAYLOAD="$(jq -n \
-                --arg sys "$SYS_INSTR" \
-                --arg user "$USER_TEXT" \
-                '{
-                  "system_instruction": { "parts": [ { "text": $sys } ] },
-                  "contents": [ { "role": "user", "parts": [ { "text": $user } ] } ],
-                  "generationConfig": { "temperature": 0.2 }
-                }')"
-
-              RESP="$(curl -sS \
-                -H "x-goog-api-key: ${GEMINI_API_KEY}" \
-                -H "Content-Type: application/json" \
-                -X POST \
-                -d "$PAYLOAD" \
-                "https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent")"
-
-              NOTES="$(printf "%s" "$RESP" | jq -r '.candidates[0].content.parts[0].text // empty')"
-              if [ -z "$(printf "%s" "$NOTES" | tr -d '[:space:]')" ]; then
-                echo "Gemini returned empty response. Full response:"
-                echo "$RESP"
-                exit 1
-              fi
-
-              # Minor sanitizer
-              NOTES="$(printf "%s\n" "$NOTES" | sed -E \
-                's/^Added$/### Added/; s/^Changed$/### Changed/; s/^Removed$/### Removed/; s/^Fixed$/### Fixed/')"
+                ### Fixed
+                - ..."
 
               # Prepend new entry
               {
@@ -295,7 +235,7 @@ jobs:
               '. + [{
                 zip_path: $zip,
                 safe_id: $safe_id,
-                version: $ver,
+                version:  $ver,
                 tag: $tag,
                 title: $title,
                 asset_name: $asset,
@@ -305,7 +245,7 @@ jobs:
                 publishedFileId: $published
               }]' <<< "$MODS")"
 
-          done < <(jq -r '.[]' <<< "$ZIPS_JSON")
+          done < <(jq -r '. []' <<< "$ZIPS_JSON")
 
           echo "mods_json=$MODS" >> "$GITHUB_OUTPUT"
 
@@ -338,7 +278,7 @@ jobs:
           test -f "$ZIP" || (echo "Missing ZIP: $ZIP" && exit 1)
 
           TAG="${{ matrix.mod.tag }}"
-          TITLE="${{ matrix.mod.title }}"
+          TITLE="${{ matrix.mod. title }}"
           ASSET_NAME="${{ matrix.mod.asset_name }}"
 
           NOTES="$(printf "%s" "${{ matrix.mod.notes_b64 }}" | base64 -d)"
